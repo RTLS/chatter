@@ -1,0 +1,15 @@
+version: '3'
+services:
+  dbserver:
+    image: postgres:11.10
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - 5432:5432
+    command:
+      - "postgres"
+    volumes:
+      - dbserver_data:/var/lib/postgresql/data
+volumes:
+  dbserver_data:
