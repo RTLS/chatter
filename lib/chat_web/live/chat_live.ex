@@ -4,6 +4,7 @@ defmodule ChatWeb.ChatLive do
   alias Chat.Utils
   alias Chat.Users.User
   alias Chat.Chats.{Chat, Message}
+  alias ChatWeb.Avatar
 
   def mount(_params, _session, socket) do
     chats = [
@@ -71,26 +72,13 @@ defmodule ChatWeb.ChatLive do
         Profile
       </div>
       <div class="px-4">
-        <.avatar avatar={@user.avatar} color={@user.color} online={false} />
+        <Avatar.large user={@user} online={false} />
       </div>
     </div>
     """
   end
 
-  def avatar(assigns) do
-    ~H"""
-    <div class="relative inline-block">
-      <span class="flex inline-block align-middle w-12 h-12 rounded-full bg-teal-600 text-xl text-center">
-        <div class="m-auto uppercase">
-          <p><%= @avatar %></p>
-        </div>
-      </span>
-      <%= if @online do %>
-        <span class="absolute bottom-0 right-0 inline-block w-3 h-3 bg-green-600 border border-white rounded-full"></span>
-      <% end %>
-    </div>
-    """
-  end
+
 
   def chats(assigns) do
     ~H"""
@@ -137,9 +125,14 @@ defmodule ChatWeb.ChatLive do
 
   def message(assigns) do
     ~H"""
-    <div class={"max-w-prose py-3 px-4 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
-      <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-800 rounded-tr", else: "bg-zinc-800 rounded-tl"}"}>
-        <%= @message.text %>
+    <div class={"flex py-3 px-4 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
+      <div class={"#{if did_user_send_message?(@user, @message), do: "order-last", else: "order-first"}"}>
+        <Avatar.medium user={@user} online={false} />
+      </div>
+      <div class="max-w-prose px-4">
+        <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-800 rounded-tr", else: "bg-zinc-800 rounded-tl"}"}>
+          <%= @message.text %>
+        </div>
       </div>
     </div>
     """
