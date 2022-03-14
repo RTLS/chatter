@@ -51,7 +51,8 @@ defmodule Chat.MixProject do
       {:plug_cowboy, "~> 2.5"},
 
       ## Additional
-      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev}
+      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
+      {:uuid, "~> 1.1" }
     ]
   end
 
