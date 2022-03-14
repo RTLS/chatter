@@ -6,19 +6,14 @@ defmodule ChatWeb.ChatLive do
   alias Chat.Chats.{Chat, Message}
 
   def mount(_params, _session, socket) do
-    socket =
-      socket
-      |> assign(:user, User.create())
-      |> assign(:chat_id, nil)
-      |> assign(:chats, [
+    chats = [
         Chat.create(%{name: "Radiohead", messages: [Message.create(%{text: "prescient"})]}),
         Chat.create(%{
           name: "ACM at UCLA",
           messages: [
-            Message.create(%{
-              text:
-                "and of course it depnds on a number of things such as:\n1) when can I see a move?\n2) what movie might that be???"
-            })
+            Message.create(%{ text: "and is it batman" }),
+            Message.create(%{ text: "what movie are we seeing?" }),
+            Message.create(%{ text: "and of course it depnds on a number of things such as:" })
           ]
         }),
         Chat.create(%{
@@ -31,19 +26,39 @@ defmodule ChatWeb.ChatLive do
             Message.create(%{text: "how about saturday?? let's def try to get a session in soon"})
           ]
         })
-      ])
+    ]
+
+    socket =
+      socket
+      |> assign(:user, User.create())
+      |> assign(:chat_id, chats |> List.last() |> Map.get(:id))
+      |> assign(:chats, chats)
+      |> assign(:chat, List.last(chats))
 
     {:ok, socket}
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
-    {:noreply, assign(socket, :chat_id, chat_id)}
+    chat = Enum.find(socket.assigns.chats, & &1.id === chat_id)
+    {:noreply, assign(socket, %{chat_id: chat_id, chat: chat})}
+  end
+
+  def handle_event("send-message", %{"message" => ""}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("send-message", %{"message" => message}, socket) do
+    user = socket.assigns.user
+    chat = socket.assigns.chat
+
+    chat = %{chat | messages: [Message.create(%{user_id: user.id, text: message}) | chat.messages]}
+    {:noreply, assign(socket, %{chat: chat})}
   end
 
   def profile(assigns) do
     ~H"""
-    <div class="flex justify-between py-3 border-b border-zinc-700">
-      <div class="px-4 text-xl bold font-semibold">
+    <div class="flex justify-between py-3 h-20 border-b border-zinc-700">
+      <div class="px-4 text-xl font-semibold">
         Profile
       </div>
       <div class="px-4">
@@ -70,7 +85,7 @@ defmodule ChatWeb.ChatLive do
   def chats(assigns) do
     ~H"""
     <div class="pt-3">
-      <div class="px-4 py-4 text-xl bold font-semibold">
+      <div class="px-4 py-4 text-xl font-semibold">
         Chats
       </div>
       <%= for chat <- @chats do %>
@@ -89,4 +104,37 @@ defmodule ChatWeb.ChatLive do
     </div>
     """
   end
+
+  def chat(assigns) do
+    ~H"""
+    <div class="flex flex-col h-full">
+      <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold"><%= @chat.name %></div>
+      <div class="grow w-full px-4">
+        <div class="h-full py-4 flex flex-col-reverse">
+          <%= for message <- @chat.messages do %>
+            <.message message={message} user={@user} />
+          <% end %>
+        </div>
+      </div>
+      <div class="flex-none px-2 h-14 w-full">
+        <form phx-submit="send-message">
+          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..."/>
+        </form>
+      </div>
+    </div>
+    """
+  end
+
+  def message(assigns) do
+    ~H"""
+      <div class={"max-w-prose py-3 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
+      <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-700 rounded-tr-none", else: "bg-zinc-700 rounded-tl-none"}"}>
+        <%= @message.text %>
+      </div>
+    </div>
+    """
+  end
+
+  defp did_user_send_message?(%User{id: id}, %Message{user_id: id}), do: true
+  defp did_user_send_message?(%User{id: _}, %Message{user_id: _}), do: false
 end
