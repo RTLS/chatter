@@ -9,6 +9,7 @@ defmodule ChatWeb.ChatLive do
     socket =
       socket
       |> assign(:user, User.create())
+      |> assign(:chat_id, nil)
       |> assign(:chats, [
         Chat.create(%{name: "Radiohead", messages: [Message.create(%{text: "prescient"})]}),
         Chat.create(%{
@@ -23,12 +24,20 @@ defmodule ChatWeb.ChatLive do
         Chat.create(%{
           name: "send it",
           messages: [
-            Message.create(%{text: "yeah sorry I'm not in town this weekend unfortunately"})
+            Message.create(%{text: "yeah sorry I'm not in town this weekend unfortunately"}),
+            Message.create(%{text: "what about you renee?"}),
+            Message.create(%{text: "that does work for me!"}),
+            Message.create(%{text: "bingo bongo :D"}),
+            Message.create(%{text: "how about saturday?? let's def try to get a session in soon"})
           ]
         })
       ])
 
     {:ok, socket}
+  end
+
+  def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
+    {:noreply, assign(socket, :chat_id, chat_id)}
   end
 
   def profile(assigns) do
@@ -65,7 +74,7 @@ defmodule ChatWeb.ChatLive do
         Chats
       </div>
       <%= for chat <- @chats do %>
-        <div class="pl-4 w-full h-20 py-3 hover:bg-zinc-600">
+        <div class={"pl-4 py-3 m-2 rounded h-20 #{if chat.id === @chat_id, do: "bg-zinc-700"}"} phx-click="click-chat" phx-value-chat-id={chat.id}>
           <div class="">
             <%= chat.name %>
           </div>
