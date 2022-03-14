@@ -7,25 +7,25 @@ defmodule ChatWeb.ChatLive do
 
   def mount(_params, _session, socket) do
     chats = [
-        Chat.create(%{name: "Radiohead", messages: [Message.create(%{text: "prescient"})]}),
-        Chat.create(%{
-          name: "ACM at UCLA",
-          messages: [
-            Message.create(%{ text: "and is it batman" }),
-            Message.create(%{ text: "what movie are we seeing?" }),
-            Message.create(%{ text: "and of course it depnds on a number of things such as:" })
-          ]
-        }),
-        Chat.create(%{
-          name: "send it",
-          messages: [
-            Message.create(%{text: "yeah sorry I'm not in town this weekend unfortunately"}),
-            Message.create(%{text: "what about you renee?"}),
-            Message.create(%{text: "that does work for me!"}),
-            Message.create(%{text: "bingo bongo :D"}),
-            Message.create(%{text: "how about saturday?? let's def try to get a session in soon"})
-          ]
-        })
+      Chat.create(%{name: "Radiohead", messages: [Message.create(%{text: "prescient"})]}),
+      Chat.create(%{
+        name: "ACM at UCLA",
+        messages: [
+          Message.create(%{text: "and is it batman"}),
+          Message.create(%{text: "what movie are we seeing?"}),
+          Message.create(%{text: "and of course it depnds on a number of things such as:"})
+        ]
+      }),
+      Chat.create(%{
+        name: "send it",
+        messages: [
+          Message.create(%{text: "yeah sorry I'm not in town this weekend unfortunately"}),
+          Message.create(%{text: "what about you renee?"}),
+          Message.create(%{text: "that does work for me!"}),
+          Message.create(%{text: "bingo bongo :D"}),
+          Message.create(%{text: "how about saturday?? let's def try to get a session in soon"})
+        ]
+      })
     ]
 
     socket =
@@ -39,7 +39,7 @@ defmodule ChatWeb.ChatLive do
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
-    chat = Enum.find(socket.assigns.chats, & &1.id === chat_id)
+    chat = Enum.find(socket.assigns.chats, &(&1.id === chat_id))
     {:noreply, assign(socket, %{chat_id: chat_id, chat: chat})}
   end
 
@@ -51,7 +51,11 @@ defmodule ChatWeb.ChatLive do
     user = socket.assigns.user
     chat = socket.assigns.chat
 
-    chat = %{chat | messages: [Message.create(%{user_id: user.id, text: message}) | chat.messages]}
+    chat = %{
+      chat
+      | messages: [Message.create(%{user_id: user.id, text: message}) | chat.messages]
+    }
+
     {:noreply, assign(socket, %{chat: chat})}
   end
 
@@ -62,7 +66,7 @@ defmodule ChatWeb.ChatLive do
         Profile
       </div>
       <div class="px-4">
-        <.avatar text={@user.avatar}, color={@user.color} />
+        <.avatar text={@user.avatar} , color={@user.color} />
       </div>
     </div>
     """
@@ -76,8 +80,7 @@ defmodule ChatWeb.ChatLive do
           <p><%= @text %></p>
         </div>
       </span>
-      <span class="absolute bottom-0 right-0 inline-block w-3 h-3 bg-green-600 border border-white rounded-full">
-      </span>
+      <span class="absolute bottom-0 right-0 inline-block w-3 h-3 bg-green-600 border border-white rounded-full"></span>
     </div>
     """
   end
@@ -95,8 +98,8 @@ defmodule ChatWeb.ChatLive do
           </div>
           <%= if message = List.first(chat.messages) do %>
             <div class="flex justify-between text-zinc-500 text-sm">
-              <div class="w-3/4 h-5 overflow-hidden text-ellipsis"> <%= message.text %> </div>
-              <div class="w-1/6"> <%= Utils.format_datetime(message.sent_at) %> </div>
+              <div class="w-3/4 h-5 overflow-hidden text-ellipsis"><%= message.text %></div>
+              <div class="w-1/6"><%= Utils.format_datetime(message.sent_at) %></div>
             </div>
           <% end %>
         </div>
@@ -118,7 +121,7 @@ defmodule ChatWeb.ChatLive do
       </div>
       <div class="flex-none px-2 h-14 w-full">
         <form phx-submit="send-message">
-          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..."/>
+          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..." />
         </form>
       </div>
     </div>
@@ -127,7 +130,7 @@ defmodule ChatWeb.ChatLive do
 
   def message(assigns) do
     ~H"""
-      <div class={"max-w-prose py-3 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
+    <div class={"max-w-prose py-3 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
       <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-700 rounded-tr-none", else: "bg-zinc-700 rounded-tl-none"}"}>
         <%= @message.text %>
       </div>
