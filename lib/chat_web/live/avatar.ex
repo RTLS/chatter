@@ -6,13 +6,13 @@ defmodule ChatWeb.Avatar do
   def large(assigns) do
     ~H"""
     <div class="relative inline-block">
-      <span class="flex inline-block align-middle w-12 h-12 rounded-full bg-teal-600 text-xl text-center">
+      <span class={"flex inline-block align-middle w-12 h-12 rounded-full bg-#{@user.color}-600 text-xl text-center"}>
         <div class="m-auto uppercase">
           <p><%= @user.avatar %></p>
         </div>
       </span>
       <%= if @online do %>
-        <span class="absolute bottom-0 right-0 inline-block w-3 h-3 bg-green-600 border border-white rounded-full"></span>
+        <span class="absolute bottom-0 right-0 inline-block w-3 h-3 bg-green-500 border border-white rounded-full"></span>
       <% end %>
     </div>
     """
@@ -21,13 +21,13 @@ defmodule ChatWeb.Avatar do
   def medium(assigns) do
     ~H"""
     <div class="relative inline-block">
-      <span class="flex inline-block align-middle w-8 h-8 rounded-full bg-teal-600 text-sm text-center">
+      <span class={"flex inline-block align-middle w-8 h-8 rounded-full bg-#{@user.color}-600 text-sm text-center"}>
         <div class="m-auto uppercase">
           <p><%= @user.avatar %></p>
         </div>
       </span>
       <%= if @online do %>
-        <span class="absolute bottom-0 right-0 inline-block w-2 h-2 bg-green-600 border border-white rounded-full"></span>
+        <span class="absolute bottom-0 right-0 inline-block w-2 h-2 bg-green-500 border border-white rounded-full"></span>
       <% end %>
     </div>
     """

@@ -7,7 +7,6 @@ defmodule Chat.Constants do
     :amber,
     :yellow,
     :lime,
-    :green,
     :emerald,
     :teal,
     :cyan,

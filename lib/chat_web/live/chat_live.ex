@@ -6,37 +6,40 @@ defmodule ChatWeb.ChatLive do
   alias Chat.Chats.{Chat, Message}
   alias ChatWeb.Avatar
 
+  @user User.create()
+  @other_users Enum.map(1..10, fn _ -> User.create() end)
+
   def mount(_params, _session, socket) do
     chats = [
       Chat.create(%{
         name: "Radiohead",
         messages: [
-          Message.create(%{text: "prescient"})
+          Message.create(%{user: Enum.random(@other_users), text: "prescient"})
         ]
       }),
       Chat.create(%{
         name: "ACM at UCLA",
         messages: [
-          Message.create(%{text: "and is it batman"}),
-          Message.create(%{text: "what movie are we seeing?"}),
-          Message.create(%{text: "and of course it depnds on a number of things such as:"})
+          Message.create(%{user: Enum.random(@other_users), text: "and is it batman"}),
+          Message.create(%{user: Enum.random(@other_users), text: "what movie are we seeing?"}),
+          Message.create(%{user: Enum.random(@other_users), text: "and of course it depnds on a number of things such as:"})
         ]
       }),
       Chat.create(%{
         name: "send it",
         messages: [
-          Message.create(%{text: "yeah sorry I'm not in town this weekend unfortunately"}),
-          Message.create(%{text: "what about you renee?"}),
-          Message.create(%{text: "that does work for me!"}),
-          Message.create(%{text: "bingo bongo :D"}),
-          Message.create(%{text: "how about saturday?? let's def try to get a session in soon"})
+          Message.create(%{user: Enum.random(@other_users), text: "yeah sorry I'm not in town this weekend unfortunately"}),
+          Message.create(%{user: Enum.random(@other_users), text: "what about you renee?"}),
+          Message.create(%{user: Enum.random(@other_users), text: "that does work for me!"}),
+          Message.create(%{user: Enum.random(@other_users), text: "bingo bongo :D"}),
+          Message.create(%{user: Enum.random(@other_users), text: "how about saturday?? let's def try to get a session in soon"})
         ]
       })
     ]
 
     socket =
       socket
-      |> assign(:user, User.create())
+      |> assign(:user, @user)
       |> assign(:chat_id, chats |> List.last() |> Map.get(:id))
       |> assign(:chats, chats)
       |> assign(:chat, List.last(chats))
@@ -59,7 +62,7 @@ defmodule ChatWeb.ChatLive do
 
     chat = %{
       chat
-      | messages: [Message.create(%{user_id: user.id, text: message}) | chat.messages]
+      | messages: [Message.create(%{user_id: user.id, user: user, text: message}) | chat.messages]
     }
 
     {:noreply, assign(socket, %{chat: chat})}
@@ -72,7 +75,7 @@ defmodule ChatWeb.ChatLive do
         Profile
       </div>
       <div class="px-4">
-        <Avatar.large user={@user} online={false} />
+        <Avatar.large user={@user} online={true} />
       </div>
     </div>
     """
@@ -127,7 +130,7 @@ defmodule ChatWeb.ChatLive do
     ~H"""
     <div class={"flex py-3 px-4 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
       <div class={"#{if did_user_send_message?(@user, @message), do: "order-last", else: "order-first"}"}>
-        <Avatar.medium user={@user} online={false} />
+        <Avatar.medium user={@message.user} online={Enum.random(0..1) === 0} />
       </div>
       <div class="max-w-prose px-4">
         <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-800 rounded-tr", else: "bg-zinc-800 rounded-tl"}"}>

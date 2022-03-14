@@ -16,10 +16,11 @@ defmodule Chat.Users.User do
     params
     |> Map.put_new(:id, UUID.uuid1())
     |> Map.put_new(:avatar, random_avatar())
+    |> Map.put_new(:color, Enum.random(Constants.colors()))
     |> then(&struct(User, &1))
   end
 
   defp random_avatar do
-    for _ <- 1..2, into: "", do: <<Enum.random('abcdef')>>
+    for _ <- 1..2, into: "", do: <<Enum.random('abcdefghijklmnopqrstuvwxyz')>>
   end
 end
