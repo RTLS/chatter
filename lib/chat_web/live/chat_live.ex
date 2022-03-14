@@ -120,8 +120,8 @@ defmodule ChatWeb.ChatLive do
         </div>
       </div>
       <div class="flex-none p-2 h-14 w-full">
-        <form phx-submit="send-message">
-          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..." />
+        <form phx-submit="send-message" autocomplete="off">
+          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..."/>
         </form>
       </div>
     </div>
