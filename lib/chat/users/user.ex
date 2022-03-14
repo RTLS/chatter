@@ -19,7 +19,6 @@ defmodule Chat.Users.User do
     |> then(&struct(User, &1))
   end
 
-
   defp random_avatar do
     for _ <- 1..2, into: "", do: <<Enum.random('abcdef')>>
   end

@@ -52,7 +52,7 @@ defmodule Chat.MixProject do
 
       ## Additional
       {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
-      {:uuid, "~> 1.1" }
+      {:uuid, "~> 1.1"}
     ]
   end
 
