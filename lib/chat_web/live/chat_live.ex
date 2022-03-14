@@ -110,16 +110,16 @@ defmodule ChatWeb.ChatLive do
 
   def chat(assigns) do
     ~H"""
-    <div class="flex flex-col h-full">
-      <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold"><%= @chat.name %></div>
-      <div class="grow w-full px-4">
-        <div class="h-full py-4 flex flex-col-reverse">
+    <div class="flex flex-col max-h-screen h-full">
+      <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold border-b border-zinc-700"><%= @chat.name %></div>
+      <div class="grow w-full overflow-auto">
+        <div class="py-4 flex flex-col-reverse h-full overflow-auto">
           <%= for message <- @chat.messages do %>
             <.message message={message} user={@user} />
           <% end %>
         </div>
       </div>
-      <div class="flex-none px-2 h-14 w-full">
+      <div class="flex-none p-2 h-14 w-full">
         <form phx-submit="send-message">
           <input type="text" name="message" class="w-full rounded-2xl bg-zinc-700" placeholder="Type a message..." />
         </form>
@@ -130,7 +130,7 @@ defmodule ChatWeb.ChatLive do
 
   def message(assigns) do
     ~H"""
-    <div class={"max-w-prose py-3 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
+    <div class={"max-w-prose py-3 px-2 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
       <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-700 rounded-tr-none", else: "bg-zinc-700 rounded-tl-none"}"}>
         <%= @message.text %>
       </div>

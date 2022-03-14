@@ -1,9 +1,9 @@
-<section class="h-screen w-screen flex bg-zinc-800 text-zinc-100">
+<section class="max-h-screen h-screen w-screen flex bg-zinc-800 text-zinc-100">
   <section class="max-w-sm w-full pt-4 overflow-auto border-r border-zinc-700">
     <.profile user={@user} />
     <.chats chats={@chats} chat_id={@chat_id} />
   </section>
-  <section class="h-screen w-full pt-4">
+  <section class="h-full w-full pt-4">
     <.chat user={@user} chat={@chat} />
   </section>
 </section>
