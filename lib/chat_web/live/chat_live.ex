@@ -47,6 +47,22 @@ defmodule ChatWeb.ChatLive do
     {:ok, socket}
   end
 
+
+  def handle_event("new-chat", %{"chat-name" => chat_name}, socket) do
+    case String.trim(chat_name) do
+      "" ->
+      {:noreply, assign(socket, %{chat: nil})}
+
+      chat_name ->
+        chat = Chat.create(%{name: chat_name})
+        {:noreply, assign(socket, %{chat: chat, chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
+    end
+  end
+
+  def handle_event("new-chat", _params, socket) do
+    {:noreply, assign(socket, %{chat: nil, chat_id: nil})}
+  end
+
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
     chat = Enum.find(socket.assigns.chats, &(&1.id === chat_id))
     {:noreply, assign(socket, %{chat_id: chat_id, chat: chat})}
@@ -86,8 +102,13 @@ defmodule ChatWeb.ChatLive do
   def chats(assigns) do
     ~H"""
     <div class="pt-3">
-      <div class="px-4 py-4 text-xl font-semibold">
-        Chats
+      <div class="flex justify-between">
+        <div class="px-4 py-4 text-xl font-semibold">
+          Chats
+        </div>
+        <div phx-click="new-chat" class="py-4 px-4">
+          <span class="material-icons"> add_circle </span>
+        </div>
       </div>
       <%= for chat <- @chats do %>
         <div class={"pl-4 py-3 m-2 rounded h-20 #{if chat.id === @chat_id, do: "bg-zinc-800"}"} phx-click="click-chat" phx-value-chat-id={chat.id}>
@@ -102,6 +123,19 @@ defmodule ChatWeb.ChatLive do
           <% end %>
         </div>
       <% end %>
+    </div>
+    """
+  end
+
+  def chat(%{chat: nil} = assigns) do
+    ~H"""
+    <div class="flex flex-col max-h-screen h-full">
+      <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold border-b border-zinc-800">
+        <form phx-submit="new-chat" autocomplete="off">
+          <input type="text" name="chat-name" class="w-full bg-transparent border-none" placeholder="Type a name for this chat..." autofocus="true"/>
+        </form>
+      </div>
+      <div class="grow w-full"> </div>
     </div>
     """
   end
