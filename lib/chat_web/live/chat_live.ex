@@ -1,16 +1,14 @@
 defmodule ChatWeb.ChatLive do
+  @moduledoc "LiveView for primary chat page."
   use ChatWeb, :live_view
 
-  alias Chat.Utils
   alias Chat.Users.User
   alias Chat.Chats.{Chat, Message}
-  alias ChatWeb.Avatar
+  alias ChatWeb.{Avatar, ChatSidebarComponent, Presence}
 
   @user User.create(%{avatar: "up", color: :violet})
   @other_users Enum.map(1..30, fn _ -> User.create() end)
-
-  def mount(_params, _session, socket) do
-    chats = [
+  @chats [
       Chat.create(%{
         name: "Radiohead",
         messages: [
@@ -22,36 +20,64 @@ defmodule ChatWeb.ChatLive do
         messages: [
           Message.create(%{user: List.first(@other_users), text: "and is it batman"}),
           Message.create(%{user: List.first(@other_users), text: "what movie are we seeing?"}),
-          Message.create(%{user: List.first(@other_users), text: "and of course it depnds on a number of things such as:"})
+          Message.create(%{
+            user: List.first(@other_users),
+            text: "and of course it depnds on a number of things such as:"
+          })
         ]
       }),
       Chat.create(%{
         name: "send it",
         messages: [
-          Message.create(%{user: Enum.random(@other_users), text: "yeah sorry I'm not in town this weekend unfortunately"}),
+          Message.create(%{
+            user: Enum.random(@other_users),
+            text: "yeah sorry I'm not in town this weekend unfortunately"
+          }),
           Message.create(%{user: Enum.random(@other_users), text: "what about you renee?"}),
           Message.create(%{user: Enum.random(@other_users), text: "that does work for me!"}),
           Message.create(%{user: Enum.random(@other_users), text: "bingo bongo :D"}),
-          Message.create(%{user: Enum.random(@other_users), text: "how about saturday?? let's def try to get a session in soon"})
+          Message.create(%{
+            user: Enum.random(@other_users),
+            text: "how about saturday?? let's def try to get a session in soon"
+          })
         ]
       })
     ]
 
+  def mount(_params, _session, socket) do
+    case connected?(socket) do
+      true -> connected_mount(socket)
+      false -> {:ok, assign(socket, :status, :connecting)}
+    end
+  end
+
+  def connected_mount(socket) do
+    selected_chat = List.last(@chats)
+
+    chats =
+      Enum.map(@chats, fn chat ->
+        if chat.id === selected_chat.id do
+          Presence.track(self(), chat_topic(chat), @user.id, %{})
+        end
+
+        %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
+      end)
+
     socket =
       socket
       |> assign(:user, @user)
-      |> assign(:chat_id, chats |> List.last() |> Map.get(:id))
+      |> assign(:chat_id, selected_chat.id)
       |> assign(:chats, chats)
-      |> assign(:chat, List.last(chats))
+      |> assign(:chat, selected_chat)
+      |> assign(:status, :connected)
 
     {:ok, socket}
   end
 
-
   def handle_event("new-chat", %{"chat-name" => chat_name}, socket) do
     case String.trim(chat_name) do
       "" ->
-      {:noreply, assign(socket, %{chat: nil})}
+        {:noreply, assign(socket, %{chat: nil})}
 
       chat_name ->
         chat = Chat.create(%{name: chat_name})
@@ -64,7 +90,11 @@ defmodule ChatWeb.ChatLive do
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
+    user = socket.assigns.user
+    Presence.untrack(self(), chat_topic(socket.assigns.chat), user.id)
     chat = Enum.find(socket.assigns.chats, &(&1.id === chat_id))
+    Presence.track(self(), chat_topic(chat), user.id, %{})
+
     {:noreply, assign(socket, %{chat_id: chat_id, chat: chat})}
   end
 
@@ -97,8 +127,6 @@ defmodule ChatWeb.ChatLive do
     """
   end
 
-
-
   def chats(assigns) do
     ~H"""
     <div class="pt-3">
@@ -107,21 +135,11 @@ defmodule ChatWeb.ChatLive do
           Chats
         </div>
         <div phx-click="new-chat" class="py-4 px-4">
-          <span class="material-icons"> add_circle </span>
+          <span class="material-icons">add_circle</span>
         </div>
       </div>
       <%= for chat <- @chats do %>
-        <div class={"pl-4 py-3 m-2 rounded h-20 #{if chat.id === @chat_id, do: "bg-zinc-800"}"} phx-click="click-chat" phx-value-chat-id={chat.id}>
-          <div class="">
-            <%= chat.name %>
-          </div>
-          <%= if message = List.first(chat.messages) do %>
-            <div class="flex justify-between text-zinc-500 text-sm">
-              <div class="w-3/4 h-5 overflow-hidden text-ellipsis"><%= message.text %></div>
-              <div class="w-1/6"><%= Utils.format_datetime(message.sent_at) %></div>
-            </div>
-          <% end %>
-        </div>
+        <.live_component module={ChatSidebarComponent} id={chat.id} chat={chat} selected={chat.id === @chat_id} />
       <% end %>
     </div>
     """
@@ -132,10 +150,10 @@ defmodule ChatWeb.ChatLive do
     <div class="flex flex-col max-h-screen h-full">
       <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold border-b border-zinc-800">
         <form phx-submit="new-chat" autocomplete="off">
-          <input type="text" name="chat-name" class="w-full bg-transparent border-none" placeholder="Type a name for this chat..." autofocus="true"/>
+          <input type="text" name="chat-name" class="w-full bg-transparent border-none" placeholder="Type a name for this chat..." autofocus="true" />
         </form>
       </div>
-      <div class="grow w-full"> </div>
+      <div class="grow w-full"></div>
     </div>
     """
   end
@@ -153,7 +171,7 @@ defmodule ChatWeb.ChatLive do
       </div>
       <div class="flex-none p-2 h-14 w-full">
         <form phx-submit="send-message" autocomplete="off">
-          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-800 target:outline-black" placeholder="Type a message..."/>
+          <input type="text" name="message" class="w-full rounded-2xl bg-zinc-800 target:outline-black" placeholder="Type a message..." />
         </form>
       </div>
     </div>
@@ -177,4 +195,6 @@ defmodule ChatWeb.ChatLive do
 
   defp did_user_send_message?(%User{id: id}, %Message{user_id: id}), do: true
   defp did_user_send_message?(%User{id: _}, %Message{user_id: _}), do: false
+
+  defp chat_topic(%Chat{id: id}), do: "chat:#{id}"
 end

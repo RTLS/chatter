@@ -1,9 +1,13 @@
 <section class="max-h-screen h-screen w-screen flex bg-zinc-900 text-zinc-300">
   <section class="max-w-sm w-full pt-4 overflow-auto border-r border-zinc-800">
-    <.profile user={@user} />
-    <.chats chats={@chats} chat_id={@chat_id} />
+    <%= if @status === :connected do %>
+      <.profile user={@user} />
+      <.chats chats={@chats} chat_id={@chat_id} />
+    <% end %>
   </section>
   <section class="h-full w-full pt-4">
-    <.chat user={@user} chat={@chat} />
+    <%= if @status === :connected do %>
+      <.chat user={@user} chat={@chat} />
+    <% end %>
   </section>
 </section>

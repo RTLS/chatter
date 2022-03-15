@@ -1,0 +1,22 @@
+defmodule ChatWeb.ChatSidebarComponent do
+  @moduledoc "LiveView LiveComponent for chat in the sidebar."
+  use Phoenix.LiveComponent
+
+  def render(assigns) do
+    ~H"""
+    <div phx-click="click-chat" phx-value-chat-id={@chat.id} class={"pl-4 py-3 m-2 rounded h-20 #{if @selected, do: "bg-zinc-800"}"}>
+      <div><%= @chat.name %></div>
+      <%= if message = List.first(@chat.messages) do %>
+        <div class="flex justify-between pr-4 text-zinc-500 text-sm">
+          <div class="h-5 overflow-hidden text-ellipsis"><%= message.text %></div>
+          <div class=""><%= Chat.Utils.format_datetime(message.sent_at) %></div>
+        </div>
+      <% end %>
+      <div class="text-right pr-4 text-sm"><%= users_online_text(@chat.users_online) %></div>
+    </div>
+    """
+  end
+
+  defp users_online_text(1), do: "1 user here"
+  defp users_online_text(num), do: "#{num} users here"
+end
