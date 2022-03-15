@@ -4,45 +4,45 @@ defmodule ChatWeb.ChatLive do
 
   alias Chat.Users.User
   alias Chat.Chats.{Chat, Message}
-  alias ChatWeb.{Avatar, ChatSidebarComponent, Presence}
+  alias ChatWeb.{Avatar, ChatSidebar, Presence}
 
   @user User.create(%{avatar: "up", color: :violet})
   @other_users Enum.map(1..30, fn _ -> User.create() end)
   @chats [
-      Chat.create(%{
-        name: "Radiohead",
-        messages: [
-          Message.create(%{user: Enum.random(@other_users), text: "prescient"})
-        ]
-      }),
-      Chat.create(%{
-        name: "ACM at UCLA",
-        messages: [
-          Message.create(%{user: List.first(@other_users), text: "and is it batman"}),
-          Message.create(%{user: List.first(@other_users), text: "what movie are we seeing?"}),
-          Message.create(%{
-            user: List.first(@other_users),
-            text: "and of course it depnds on a number of things such as:"
-          })
-        ]
-      }),
-      Chat.create(%{
-        name: "send it",
-        messages: [
-          Message.create(%{
-            user: Enum.random(@other_users),
-            text: "yeah sorry I'm not in town this weekend unfortunately"
-          }),
-          Message.create(%{user: Enum.random(@other_users), text: "what about you renee?"}),
-          Message.create(%{user: Enum.random(@other_users), text: "that does work for me!"}),
-          Message.create(%{user: Enum.random(@other_users), text: "bingo bongo :D"}),
-          Message.create(%{
-            user: Enum.random(@other_users),
-            text: "how about saturday?? let's def try to get a session in soon"
-          })
-        ]
-      })
-    ]
+    Chat.create(%{
+      name: "Radiohead",
+      messages: [
+        Message.create(%{user: Enum.random(@other_users), text: "prescient"})
+      ]
+    }),
+    Chat.create(%{
+      name: "ACM at UCLA",
+      messages: [
+        Message.create(%{user: List.first(@other_users), text: "and is it batman"}),
+        Message.create(%{user: List.first(@other_users), text: "what movie are we seeing?"}),
+        Message.create(%{
+          user: List.first(@other_users),
+          text: "and of course it depnds on a number of things such as:"
+        })
+      ]
+    }),
+    Chat.create(%{
+      name: "send it",
+      messages: [
+        Message.create(%{
+          user: Enum.random(@other_users),
+          text: "yeah sorry I'm not in town this weekend unfortunately"
+        }),
+        Message.create(%{user: Enum.random(@other_users), text: "what about you renee?"}),
+        Message.create(%{user: Enum.random(@other_users), text: "that does work for me!"}),
+        Message.create(%{user: Enum.random(@other_users), text: "bingo bongo :D"}),
+        Message.create(%{
+          user: Enum.random(@other_users),
+          text: "how about saturday?? let's def try to get a session in soon"
+        })
+      ]
+    })
+  ]
 
   def mount(_params, _session, socket) do
     case connected?(socket) do
@@ -54,21 +54,11 @@ defmodule ChatWeb.ChatLive do
   def connected_mount(socket) do
     selected_chat = List.last(@chats)
 
-    chats =
-      Enum.map(@chats, fn chat ->
-        if chat.id === selected_chat.id do
-          Presence.track(self(), chat_topic(chat), @user.id, %{})
-        end
-
-        %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
-      end)
-
     socket =
       socket
       |> assign(:user, @user)
-      |> assign(:chat_id, selected_chat.id)
-      |> assign(:chats, chats)
-      |> assign(:chat, selected_chat)
+      |> assign(:chats, @chats)
+      |> assign(:selected_chat_id, selected_chat.id)
       |> assign(:status, :connected)
 
     {:ok, socket}
@@ -77,25 +67,20 @@ defmodule ChatWeb.ChatLive do
   def handle_event("new-chat", %{"chat-name" => chat_name}, socket) do
     case String.trim(chat_name) do
       "" ->
-        {:noreply, assign(socket, %{chat: nil})}
+        {:noreply, socket}
 
       chat_name ->
         chat = Chat.create(%{name: chat_name})
-        {:noreply, assign(socket, %{chat: chat, chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
+        {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
     end
   end
 
   def handle_event("new-chat", _params, socket) do
-    {:noreply, assign(socket, %{chat: nil, chat_id: nil})}
+    {:noreply, assign(socket, %{selected_chat_id: nil})}
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
-    user = socket.assigns.user
-    Presence.untrack(self(), chat_topic(socket.assigns.chat), user.id)
-    chat = Enum.find(socket.assigns.chats, &(&1.id === chat_id))
-    Presence.track(self(), chat_topic(chat), user.id, %{})
-
-    {:noreply, assign(socket, %{chat_id: chat_id, chat: chat})}
+    {:noreply, assign(socket, %{selected_chat_id: chat_id})}
   end
 
   def handle_event("send-message", %{"message" => ""}, socket) do
@@ -112,6 +97,15 @@ defmodule ChatWeb.ChatLive do
     }
 
     {:noreply, assign(socket, %{chat: chat})}
+  end
+
+  def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
+    case topic_to_id(topic) do
+      {:chat, id} ->
+        send_update(ChatSidebarComponent, id: id, payload: payload)
+    end
+
+    {:noreply, socket}
   end
 
   def profile(assigns) do
@@ -139,7 +133,7 @@ defmodule ChatWeb.ChatLive do
         </div>
       </div>
       <%= for chat <- @chats do %>
-        <.live_component module={ChatSidebarComponent} id={chat.id} chat={chat} selected={chat.id === @chat_id} />
+        <ChatSidebar.render chat={chat} selected={chat.id === @selected_chat_id}} />
       <% end %>
     </div>
     """
@@ -196,5 +190,7 @@ defmodule ChatWeb.ChatLive do
   defp did_user_send_message?(%User{id: id}, %Message{user_id: id}), do: true
   defp did_user_send_message?(%User{id: _}, %Message{user_id: _}), do: false
 
-  defp chat_topic(%Chat{id: id}), do: "chat:#{id}"
+  def chat_topic(%Chat{id: id}), do: "chat:#{id}"
+
+  defp topic_to_id("chat:" <> id), do: {:chat, id}
 end

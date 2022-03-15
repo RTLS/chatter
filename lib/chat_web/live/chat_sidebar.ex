@@ -1,6 +1,6 @@
-defmodule ChatWeb.ChatSidebarComponent do
+defmodule ChatWeb.ChatSidebar do
   @moduledoc "LiveView LiveComponent for chat in the sidebar."
-  use Phoenix.LiveComponent
+  use Phoenix.Component
 
   def render(assigns) do
     ~H"""

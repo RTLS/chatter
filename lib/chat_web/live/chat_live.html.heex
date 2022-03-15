@@ -2,12 +2,12 @@
   <section class="max-w-sm w-full pt-4 overflow-auto border-r border-zinc-800">
     <%= if @status === :connected do %>
       <.profile user={@user} />
-      <.chats chats={@chats} chat_id={@chat_id} />
+      <.chats chats={@chats} selected_chat_id={@selected_chat_id}/>
     <% end %>
   </section>
   <section class="h-full w-full pt-4">
     <%= if @status === :connected do %>
-      <.chat user={@user} chat={@chat} />
+      <.chat user={@user} chat={Enum.find(@chats, & &1.id === @selected_chat_id)} />
     <% end %>
   </section>
 </section>
