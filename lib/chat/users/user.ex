@@ -21,6 +21,6 @@ defmodule Chat.Users.User do
   end
 
   defp random_avatar do
-    for _ <- 1..2, into: "", do: <<Enum.random('abcdefghijklmnopqrstuvwxyz')>>
+    for _ <- 1..2, into: "", do: <<Enum.random(?a..?z)>>
   end
 end

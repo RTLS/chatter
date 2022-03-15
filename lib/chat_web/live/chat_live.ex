@@ -6,8 +6,8 @@ defmodule ChatWeb.ChatLive do
   alias Chat.Chats.{Chat, Message}
   alias ChatWeb.Avatar
 
-  @user User.create()
-  @other_users Enum.map(1..10, fn _ -> User.create() end)
+  @user User.create(%{avatar: "up", color: :violet})
+  @other_users Enum.map(1..30, fn _ -> User.create() end)
 
   def mount(_params, _session, socket) do
     chats = [
@@ -20,9 +20,9 @@ defmodule ChatWeb.ChatLive do
       Chat.create(%{
         name: "ACM at UCLA",
         messages: [
-          Message.create(%{user: Enum.random(@other_users), text: "and is it batman"}),
-          Message.create(%{user: Enum.random(@other_users), text: "what movie are we seeing?"}),
-          Message.create(%{user: Enum.random(@other_users), text: "and of course it depnds on a number of things such as:"})
+          Message.create(%{user: List.first(@other_users), text: "and is it batman"}),
+          Message.create(%{user: List.first(@other_users), text: "what movie are we seeing?"}),
+          Message.create(%{user: List.first(@other_users), text: "and of course it depnds on a number of things such as:"})
         ]
       }),
       Chat.create(%{
