@@ -57,13 +57,14 @@ defmodule ChatWeb.ChatLive do
     # Track ourself as in the selected channel
     Presence.track(self(), chat_topic(selected_chat), @user.id, %{})
 
-    chats = Enum.map(@chats, fn chat ->
-      # Subscribe to updates on all chats
-      ChatWeb.Endpoint.subscribe(chat_topic(chat))
+    chats =
+      Enum.map(@chats, fn chat ->
+        # Subscribe to updates on all chats
+        ChatWeb.Endpoint.subscribe(chat_topic(chat))
 
-      # Get current online count for all chats
-      %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
-    end)
+        # Get current online count for all chats
+        %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
+      end)
 
     socket =
       socket
@@ -92,6 +93,10 @@ defmodule ChatWeb.ChatLive do
     {:noreply, assign(socket, %{selected_chat_id: nil})}
   end
 
+  def handle_event("click-chat", %{"chat-id" => chat_id}, %{assigns: %{selected_chat_id: chat_id}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
     Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), @user.id)
     Presence.track(self(), chat_topic(chat_id), @user.id, %{})
@@ -105,25 +110,20 @@ defmodule ChatWeb.ChatLive do
 
   def handle_event("send-message", %{"message" => message}, socket) do
     user = socket.assigns.user
-    chat = socket.assigns.chat
 
-    chat = %{
-      chat
-      | messages: [Message.create(%{user_id: user.id, user: user, text: message}) | chat.messages]
-    }
-
-    {:noreply, assign(socket, %{chat: chat})}
+    {:noreply,
+     update_chat(socket, socket.assigns.selected_chat_id, fn chat ->
+       %{chat | messages: [Message.create(%{user_id: user.id, user: user, text: message}) | chat.messages]}
+     end)}
   end
 
   def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
     case topic_to_id(topic) do
-      {:chat, id} ->
-        chat = Enum.find(socket.assigns.chats, & &1.id === id)
-        chat_idx = Enum.find_index(socket.assigns.chats, & &1.id === id)
-
-        chat = %{chat | users_online: chat.users_online + map_size(payload.joins) - map_size(payload.leaves)}
-        chats = List.replace_at(socket.assigns.chats, chat_idx, chat)
-        {:noreply, assign(socket, :chats, chats)}
+      {:chat, chat_id} ->
+        {:noreply,
+         update_chat(socket, chat_id, fn chat ->
+           %{chat | users_online: chat.users_online + map_size(payload.joins) - map_size(payload.leaves)}
+         end)}
     end
   end
 
@@ -152,7 +152,7 @@ defmodule ChatWeb.ChatLive do
         </div>
       </div>
       <%= for chat <- @chats do %>
-        <ChatSidebar.render chat={chat} selected={chat.id === @selected_chat_id}} />
+        <ChatSidebar.render chat={chat} selected={chat.id === @selected_chat_id} } />
       <% end %>
     </div>
     """
@@ -213,4 +213,14 @@ defmodule ChatWeb.ChatLive do
   def chat_topic(id) when is_binary(id), do: "chat:#{id}"
 
   defp topic_to_id("chat:" <> id), do: {:chat, id}
+
+  defp update_chat(socket, chat_id, chat_update_fn) do
+    chat =
+      socket.assigns.chats
+      |> Enum.find(& &1.id === chat_id)
+      |> chat_update_fn.()
+
+    chat_idx = Enum.find_index(socket.assigns.chats, &(&1.id === chat_id))
+    assign(socket, :chats, List.replace_at(socket.assigns.chats, chat_idx, chat))
+  end
 end
