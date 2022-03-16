@@ -7,7 +7,7 @@
   </section>
   <section class="h-full w-full pt-4">
     <%= if @status === :connected do %>
-      <.chat user={@user} messages={@messages} chat={Enum.find(@chats, &(&1.id === @selected_chat_id))} clear_message={@clear_message}/>
+      <.chat user={@user} messages={@messages} chat={Enum.find(@chats, &(&1.id === @selected_chat_id))} clear_message={@clear_message} />
     <% end %>
   </section>
 </section>

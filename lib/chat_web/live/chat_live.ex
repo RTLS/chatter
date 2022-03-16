@@ -2,9 +2,7 @@ defmodule ChatWeb.ChatLive do
   @moduledoc "LiveView for primary chat page."
   use ChatWeb, :live_view
 
-  alias Chat.Store
-  alias Chat.Users.User
-  alias Chat.Chats
+  alias Chat.{Chats, Users, Store}
   alias ChatWeb.{Avatar, ChatSidebar, Presence}
 
   def mount(_params, _session, socket) do
@@ -101,7 +99,8 @@ defmodule ChatWeb.ChatLive do
     unsubscribe_from_messages(socket.assigns.selected_chat_id)
     subscribe_to_messages(chat_id)
 
-    {:noreply, assign(socket, %{selected_chat_id: chat_id, clear_message: "", messages: Store.all_messages(%{chat_id: chat_id})})}
+    {:noreply,
+     assign(socket, %{selected_chat_id: chat_id, clear_message: "", messages: Store.all_messages(%{chat_id: chat_id})})}
   end
 
   def handle_event("send-message", %{"message" => ""}, socket) do
@@ -112,12 +111,17 @@ defmodule ChatWeb.ChatLive do
     user = socket.assigns.user
 
     {:ok, new_message} =
-      Store.create_message(%{chat_id: socket.assigns.selected_chat_id, user_id: user.id, user: user, text: message})
+      Store.create_message(%{
+        chat_id: socket.assigns.selected_chat_id,
+        user_id: user.id,
+        user: user,
+        text: message
+      })
 
     broadcast_message(new_message)
 
-    # Super hack but need to 'update' the message send box in order
-    # to trigger a client side hook and clear after send while focused
+    # Super hacky but we need to 'update' the message send box in order to
+    # trigger a client side hook to clear the text input after send while focused
     # https://github.com/phoenixframework/phoenix_live_view/issues/624
     {:noreply, assign(socket, :clear_message, UUID.uuid1())}
   end
@@ -132,7 +136,10 @@ defmodule ChatWeb.ChatLive do
     end
   end
 
-  def handle_info({:new_message, %Chats.Message{chat_id: chat_id} = message}, %{assigns: %{selected_chat_id: chat_id}} = socket) do
+  def handle_info(
+        {:new_message, %Chats.Message{chat_id: chat_id} = message},
+        %{assigns: %{selected_chat_id: chat_id}} = socket
+      ) do
     {:noreply, update(socket, :messages, &[message | &1])}
   end
 
@@ -198,7 +205,15 @@ defmodule ChatWeb.ChatLive do
       </div>
       <div class="flex-none p-2 h-14 w-full">
         <form phx-submit="send-message" autocomplete="off">
-          <input id = "message" type="text" name="message" value={@clear_message} phx-hook="ClearMessageSend" class="w-full rounded-2xl bg-zinc-800 target:outline-black" placeholder="Type a message..." />
+          <input
+            id="message"
+            type="text"
+            name="message"
+            value={@clear_message}
+            phx-hook="ClearMessageSend"
+            class="w-full rounded-2xl bg-zinc-800 target:outline-black"
+            placeholder="Type a message..."
+          />
         </form>
       </div>
     </div>
@@ -220,8 +235,8 @@ defmodule ChatWeb.ChatLive do
     """
   end
 
-  defp did_user_send_message?(%User{id: id}, %Chats.Message{user_id: id}), do: true
-  defp did_user_send_message?(%User{id: _}, %Chats.Message{user_id: _}), do: false
+  defp did_user_send_message?(%Users.User{id: id}, %Chats.Message{user_id: id}), do: true
+  defp did_user_send_message?(%Users.User{id: _}, %Chats.Message{user_id: _}), do: false
 
   defp topic_to_id("chat:" <> id), do: {:chat, id}
 
@@ -243,7 +258,7 @@ defmodule ChatWeb.ChatLive do
 
   defp track_presence(chat, user) when is_nil(chat) or is_nil(user), do: :ok
   defp track_presence(%Chats.Chat{id: chat_id}, user_or_id), do: track_presence(chat_id, user_or_id)
-  defp track_presence(chat_or_id, %User{id: user_id}), do: track_presence(chat_or_id, user_id)
+  defp track_presence(chat_or_id, %Users.User{id: user_id}), do: track_presence(chat_or_id, user_id)
 
   defp track_presence(chat_id, user_id) when is_binary(chat_id) and is_binary(user_id) do
     Presence.track(self(), chat_topic(chat_id), user_id, %{})
@@ -251,7 +266,7 @@ defmodule ChatWeb.ChatLive do
 
   defp untrack_presence(chat, user) when is_nil(chat) or is_nil(user), do: :ok
   defp untrack_presence(%Chats.Chat{id: chat_id}, user_or_id), do: untrack_presence(chat_id, user_or_id)
-  defp untrack_presence(chat_or_id, %User{id: user_id}), do: untrack_presence(chat_or_id, user_id)
+  defp untrack_presence(chat_or_id, %Users.User{id: user_id}), do: untrack_presence(chat_or_id, user_id)
 
   defp untrack_presence(chat_id, user_id) when is_binary(chat_id) and is_binary(user_id) do
     Presence.untrack(self(), chat_topic(chat_id), user_id)
@@ -261,11 +276,17 @@ defmodule ChatWeb.ChatLive do
   def chat_topic(id) when is_binary(id), do: "chat:#{id}"
 
   defp subscribe_to_messages(%Chats.Chat{id: id}), do: subscribe_to_messages(id)
-  defp subscribe_to_messages(chat_id) when is_binary(chat_id), do: Phoenix.PubSub.subscribe(Chat.PubSub, message_topic(chat_id))
+
+  defp subscribe_to_messages(chat_id) when is_binary(chat_id) do
+    Phoenix.PubSub.subscribe(Chat.PubSub, message_topic(chat_id))
+  end
 
   defp unsubscribe_from_messages(nil), do: :ok
   defp unsubscribe_from_messages(%Chats.Chat{id: id}), do: unsubscribe_from_messages(id)
-  defp unsubscribe_from_messages(chat_id) when is_binary(chat_id), do: Phoenix.PubSub.unsubscribe(Chat.PubSub, message_topic(chat_id))
+
+  defp unsubscribe_from_messages(chat_id) when is_binary(chat_id) do
+    Phoenix.PubSub.unsubscribe(Chat.PubSub, message_topic(chat_id))
+  end
 
   defp broadcast_message(%Chats.Message{chat_id: chat_id} = message) do
     Phoenix.PubSub.broadcast(Chat.PubSub, message_topic(chat_id), {:new_message, message})
@@ -273,7 +294,9 @@ defmodule ChatWeb.ChatLive do
 
   defp subscribe_to_new_chats, do: Phoenix.PubSub.subscribe(Chat.PubSub, "new_chats")
 
-  defp broadcast_new_chat(%Chats.Chat{} = chat), do: Phoenix.PubSub.broadcast(Chat.PubSub, "new_chats", {:new_chat, chat})
+  defp broadcast_new_chat(%Chats.Chat{} = chat) do
+    Phoenix.PubSub.broadcast(Chat.PubSub, "new_chats", {:new_chat, chat})
+  end
 
   defp message_topic(chat_id), do: "messages:#{chat_id}"
 end
