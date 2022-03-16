@@ -15,7 +15,7 @@ defmodule Chat.Users.User do
   def create(params \\ %{}) when is_map(params) do
     params
     |> Map.put_new(:id, UUID.uuid1())
-    |> Map.put_new(:avatar, random_avatar())
+    |> Map.put_new(:avatar, "")
     |> Map.put_new(:color, Enum.random(Constants.colors()))
     |> then(&struct(User, &1))
   end

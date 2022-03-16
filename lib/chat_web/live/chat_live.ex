@@ -165,7 +165,7 @@ defmodule ChatWeb.ChatLive do
 
   def profile(assigns) do
     ~H"""
-    <div class="flex justify-between py-3 h-20 border-b border-zinc-700">
+    <div class="flex justify-between py-3 h-20 border-b border-zinc-800">
       <div class="px-4 text-xl font-semibold">
         Profile
       </div>
