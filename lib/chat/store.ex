@@ -27,6 +27,18 @@ defmodule Chat.Store do
     Agent.get_and_update(@name, &create(User, params, &1))
   end
 
+  def find_or_create_user(find_params, create_params) do
+    case find_user(find_params) do
+      {:ok, user} ->
+        {:ok, user}
+
+      {:error, :not_found} ->
+        find_params
+        |> Map.merge(create_params)
+        |> create_user()
+    end
+  end
+
   def find_chat(params \\ %{}) do
     Agent.get(@name, &find(Chat, params, &1))
   end

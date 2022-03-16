@@ -5,15 +5,15 @@ defmodule ChatWeb.ChatLive do
   alias Chat.{Chats, Users, Store}
   alias ChatWeb.{Avatar, ChatSidebar, Presence}
 
-  def mount(_params, _session, socket) do
+  def mount(params, session, socket) do
     case connected?(socket) do
-      true -> connected_mount(socket)
+      true -> connected_mount(params, session, socket)
       false -> {:ok, assign(socket, :status, :connecting)}
     end
   end
 
-  def connected_mount(socket) do
-    {:ok, user} = Store.create_user()
+  def connected_mount(_params, session, socket) do
+    {:ok, user} = user_from_session(session)
 
     # Subscribe to new chats being started
     subscribe_to_new_chats()
@@ -51,6 +51,8 @@ defmodule ChatWeb.ChatLive do
       |> assign(:user, user)
       |> assign(:messages, Store.all_messages(%{chat_id: selected_chat_id}))
       |> assign(:clear_message, "")
+      |> PhoenixLiveSession.maybe_subscribe(session)
+      |> PhoenixLiveSession.put_session("user", user)
 
     {:ok, socket}
   end
@@ -124,6 +126,10 @@ defmodule ChatWeb.ChatLive do
     # trigger a client side hook to clear the text input after send while focused
     # https://github.com/phoenixframework/phoenix_live_view/issues/624
     {:noreply, assign(socket, :clear_message, UUID.uuid1())}
+  end
+
+  def handle_info({:live_session_updated, _session}, socket) do
+    {:noreply, socket}
   end
 
   def handle_info(%{event: "presence_diff", topic: topic, payload: %{joins: joins, leaves: leaves}}, socket) do
@@ -246,6 +252,12 @@ defmodule ChatWeb.ChatLive do
 
   defp did_user_send_message?(%Users.User{id: id}, %Chats.Message{user_id: id}), do: true
   defp did_user_send_message?(%Users.User{id: _}, %Chats.Message{user_id: _}), do: false
+
+  defp user_from_session(%{"user" => %Users.User{id: id} = user}) do
+    Store.find_or_create_user(%{id: id}, Map.from_struct(user))
+  end
+
+  defp user_from_session(_), do: Store.create_user()
 
   defp topic_to_id("chat:" <> id), do: {:chat, id}
 

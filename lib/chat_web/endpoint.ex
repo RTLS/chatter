@@ -5,7 +5,8 @@ defmodule ChatWeb.Endpoint do
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
   @session_options [
-    store: :cookie,
+    store: PhoenixLiveSession,
+    pub_sub: Chat.PubSub,
     key: "_chat_key",
     signing_salt: "LcvN3Nfq"
   ]
