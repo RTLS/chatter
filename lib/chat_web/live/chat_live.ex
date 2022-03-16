@@ -29,14 +29,10 @@ defmodule ChatWeb.ChatLive do
     selected_chat_id =
       case chats do
         [] -> nil
-        [chat] -> chat.id
-        [chat | _] -> chat.id
+        chats -> List.first(chats).id
       end
 
-    case selected_chat_id do
-      nil -> :ok
-      chat_id -> Presence.track(self(), chat_topic(chat_id), user.id, %{})
-    end
+    if selected_chat_id, do: Presence.track(self(), chat_topic(selected_chat_id), user.id, %{})
 
     socket =
       socket
@@ -63,6 +59,10 @@ defmodule ChatWeb.ChatLive do
 
         {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
     end
+  end
+
+  def handle_event("new-chat", _params, %{assigns: %{selected_chat_id: nil}} = socket) do
+    {:noreply, socket}
   end
 
   def handle_event("new-chat", _params, socket) do
