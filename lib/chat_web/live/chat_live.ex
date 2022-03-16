@@ -82,8 +82,13 @@ defmodule ChatWeb.ChatLive do
         {:noreply, socket}
 
       chat_name ->
-        chat = Chat.create(%{name: chat_name})
-        Presence.track(self(), chat_topic(chat.id), @user.id, %{})
+        # Create a chat with 1 user online
+        chat = Chat.create(%{name: chat_name, users_online: 1})
+
+        # Begin tracking ourselves as in the chat and subscribe to future joins/leaves
+        Presence.track(self(), chat_topic(chat), @user.id, %{})
+        ChatWeb.Endpoint.subscribe(chat_topic(chat))
+
         {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
     end
   end
