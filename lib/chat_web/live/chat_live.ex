@@ -233,7 +233,7 @@ defmodule ChatWeb.ChatLive do
     ~H"""
     <div class={"flex py-3 px-4 #{if did_user_send_message?(@user, @message), do: "place-self-end", else: "place-self-start"}"}>
       <div class={"#{if did_user_send_message?(@user, @message), do: "order-last", else: "order-first"}"}>
-        <Avatar.medium user={@message.user} online={Enum.random(0..1) === 0} />
+        <Avatar.medium user={@message.user} online={false} />
       </div>
       <div class="max-w-prose px-4">
         <div class={"py-1 px-2 rounded-2xl #{if did_user_send_message?(@user, @message), do: "bg-blue-800 rounded-tr", else: "bg-zinc-800 rounded-tl"}"}>
