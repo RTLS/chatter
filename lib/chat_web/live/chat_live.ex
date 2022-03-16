@@ -2,47 +2,10 @@ defmodule ChatWeb.ChatLive do
   @moduledoc "LiveView for primary chat page."
   use ChatWeb, :live_view
 
+  alias Chat.Store
   alias Chat.Users.User
   alias Chat.Chats.{Chat, Message}
   alias ChatWeb.{Avatar, ChatSidebar, Presence}
-
-  @user User.create(%{avatar: "up", color: :violet})
-  @other_users Enum.map(1..30, fn _ -> User.create() end)
-  @chats [
-    Chat.create(%{
-      name: "Radiohead",
-      messages: [
-        Message.create(%{user: Enum.random(@other_users), text: "prescient"})
-      ]
-    }),
-    Chat.create(%{
-      name: "ACM at UCLA",
-      messages: [
-        Message.create(%{user: List.first(@other_users), text: "and is it batman"}),
-        Message.create(%{user: List.first(@other_users), text: "what movie are we seeing?"}),
-        Message.create(%{
-          user: List.first(@other_users),
-          text: "and of course it depnds on a number of things such as:"
-        })
-      ]
-    }),
-    Chat.create(%{
-      name: "send it",
-      messages: [
-        Message.create(%{
-          user: Enum.random(@other_users),
-          text: "yeah sorry I'm not in town this weekend unfortunately"
-        }),
-        Message.create(%{user: Enum.random(@other_users), text: "what about you renee?"}),
-        Message.create(%{user: Enum.random(@other_users), text: "that does work for me!"}),
-        Message.create(%{user: Enum.random(@other_users), text: "bingo bongo :D"}),
-        Message.create(%{
-          user: Enum.random(@other_users),
-          text: "how about saturday?? let's def try to get a session in soon"
-        })
-      ]
-    })
-  ]
 
   def mount(_params, _session, socket) do
     case connected?(socket) do
@@ -52,13 +15,10 @@ defmodule ChatWeb.ChatLive do
   end
 
   def connected_mount(socket) do
-    selected_chat = List.last(@chats)
-
-    # Track ourself as in the selected channel
-    Presence.track(self(), chat_topic(selected_chat), @user.id, %{})
+    {:ok, user} = Store.create_user()
 
     chats =
-      Enum.map(@chats, fn chat ->
+      Enum.map(Store.all_chats(), fn chat ->
         # Subscribe to updates on all chats
         ChatWeb.Endpoint.subscribe(chat_topic(chat))
 
@@ -66,12 +26,24 @@ defmodule ChatWeb.ChatLive do
         %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
       end)
 
+    selected_chat_id =
+      case chats do
+        [] -> nil
+        [chat] -> chat.id
+        [chat | _] -> chat.id
+      end
+
+    case selected_chat_id do
+      nil -> :ok
+      chat_id -> Presence.track(self(), chat_topic(chat_id), user.id, %{})
+    end
+
     socket =
       socket
-      |> assign(:user, @user)
       |> assign(:chats, chats)
-      |> assign(:selected_chat_id, selected_chat.id)
       |> assign(:status, :connected)
+      |> assign(:selected_chat_id, selected_chat_id)
+      |> assign(:user, user)
 
     {:ok, socket}
   end
@@ -83,10 +55,10 @@ defmodule ChatWeb.ChatLive do
 
       chat_name ->
         # Create a chat with 1 user online
-        chat = Chat.create(%{name: chat_name, users_online: 1})
+        {:ok, chat} = Store.create_chat(%{name: chat_name, users_online: 1})
 
         # Begin tracking ourselves as in the chat and subscribe to future joins/leaves
-        Presence.track(self(), chat_topic(chat), @user.id, %{})
+        Presence.track(self(), chat_topic(chat), socket.assigns.user.id, %{})
         ChatWeb.Endpoint.subscribe(chat_topic(chat))
 
         {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
@@ -94,7 +66,7 @@ defmodule ChatWeb.ChatLive do
   end
 
   def handle_event("new-chat", _params, socket) do
-    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), @user.id)
+    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), socket.assigns.user.id)
     {:noreply, assign(socket, %{selected_chat_id: nil})}
   end
 
@@ -103,8 +75,8 @@ defmodule ChatWeb.ChatLive do
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
-    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), @user.id)
-    Presence.track(self(), chat_topic(chat_id), @user.id, %{})
+    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), socket.assigns.user.id)
+    Presence.track(self(), chat_topic(chat_id), socket.assigns.user.id, %{})
 
     {:noreply, assign(socket, %{selected_chat_id: chat_id})}
   end
@@ -118,7 +90,8 @@ defmodule ChatWeb.ChatLive do
 
     {:noreply,
      update_chat(socket, socket.assigns.selected_chat_id, fn chat ->
-       %{chat | messages: [Message.create(%{user_id: user.id, user: user, text: message}) | chat.messages]}
+       {:ok, new_message} = Store.create_message(%{user_id: user.id, user: user, text: message})
+       %{chat | messages: [new_message | chat.messages]}
      end)}
   end
 
