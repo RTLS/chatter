@@ -62,7 +62,7 @@ defmodule ChatWeb.ChatLive do
 
       chat_name ->
         # Create a chat with 1 user online
-        {:ok, chat} = Store.create_chat(%{name: chat_name, users_online: 1})
+        {:ok, chat} = Store.create_chat(%{name: chat_name, users_online: [socket.assigns.user]})
 
         # Begin tracking ourselves as in the chat
         track_presence(chat, socket.assigns.user)
@@ -126,12 +126,21 @@ defmodule ChatWeb.ChatLive do
     {:noreply, assign(socket, :clear_message, UUID.uuid1())}
   end
 
-  def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
+  def handle_info(%{event: "presence_diff", topic: topic, payload: %{joins: joins, leaves: leaves}}, socket) do
     case topic_to_id(topic) do
       {:chat, chat_id} ->
+        joins_users = joins |> Map.values() |> Enum.map(& &1.user)
+        leaves_ids = leaves |> Map.values() |> Enum.map(& &1.user.id)
+
         {:noreply,
          update_chat(socket, chat_id, fn chat ->
-           %{chat | users_online: chat.users_online + map_size(payload.joins) - map_size(payload.leaves)}
+            users_online =
+              chat.users_online
+              |> Kernel.++(joins_users)
+              |> Stream.reject(& &1.id in leaves_ids)
+              |> Enum.uniq()
+
+           %{chat | users_online: users_online}
          end)}
     end
   end
@@ -251,7 +260,7 @@ defmodule ChatWeb.ChatLive do
   end
 
   defp set_users_online(%Chats.Chat{} = chat) do
-    %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
+    %{chat | users_online: chat |> chat_topic() |> Presence.list() |> Map.values() |> Enum.map(& &1.user)}
   end
 
   defp subscribe_to_chat_presence(chat), do: ChatWeb.Endpoint.subscribe(chat_topic(chat))

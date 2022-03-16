@@ -70,7 +70,11 @@ defmodule Chat.Store do
   defp entry_matches_params?(entry, params) do
     Enum.all?(params, fn {field, param_value} ->
       %{^field => entry_value} = entry
-      entry_value === param_value
+
+      cond do
+        is_list(param_value) -> entry_value in param_value
+        true -> entry_value === param_value
+      end
     end)
   end
 end

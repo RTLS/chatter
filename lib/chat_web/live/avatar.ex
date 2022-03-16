@@ -32,4 +32,19 @@ defmodule ChatWeb.Avatar do
     </div>
     """
   end
+
+  def small(assigns) do
+    ~H"""
+    <div class="relative inline-block">
+      <span class={"flex inline-block align-middle w-6 h-6 rounded-full bg-#{@user.color}-600 text-xs text-center"}>
+        <div class="m-auto uppercase">
+          <p><%= @user.avatar %></p>
+        </div>
+      </span>
+      <%= if @online do %>
+        <span class="absolute bottom-0 right-0 inline-block w-2 h-2 bg-green-500 border border-white rounded-full"></span>
+      <% end %>
+    </div>
+    """
+  end
 end
