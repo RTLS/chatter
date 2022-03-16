@@ -23,7 +23,7 @@ defmodule ChatWeb.ChatSidebar do
         <%= for user <- @users_online do %>
           <Avatar.small user={user} online={false} />
         <% end %>
-        <span class="px-3 text-sm text-zinc-400"><%= overflow_text @overflow_users %></span>
+        <span class="px-3 text-sm text-zinc-400"><%= overflow_text(@overflow_users) %></span>
       </div>
     </div>
     """

@@ -13,20 +13,20 @@ if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
 end
 
 if config_env() == :prod do
-#  database_url =
-#    System.get_env("DATABASE_URL") ||
-#      raise """
-#      environment variable DATABASE_URL is missing.
-#      For example: ecto://USER:PASS@HOST/DATABASE
-#      """
-#
-#    maybe_ipv6 = if System.get_env("ECTO_IPV6"), do: [:inet6], else: []
-#
-#  config :chat, Chat.Repo,
-#    # ssl: true,
-#    url: database_url,
-#    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-#    socket_options: maybe_ipv6
+  #  database_url =
+  #    System.get_env("DATABASE_URL") ||
+  #      raise """
+  #      environment variable DATABASE_URL is missing.
+  #      For example: ecto://USER:PASS@HOST/DATABASE
+  #      """
+  #
+  #    maybe_ipv6 = if System.get_env("ECTO_IPV6"), do: [:inet6], else: []
+  #
+  #  config :chat, Chat.Repo,
+  #    # ssl: true,
+  #    url: database_url,
+  #    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+  #    socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -40,11 +40,14 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "localhost.com"
+  app_name =
+    System.get_env("FLY_APP_NAME") ||
+      raise "FLY_APP_NAME not available"
+
   port = String.to_integer(System.get_env("PORT") || "4000")
 
   config :chat, ChatWeb.Endpoint,
-    url: [host: host, port: 443],
+    url: [host: "#{app_name}.fly.dev", port: 443],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
@@ -82,4 +85,16 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  config :libcluster,
+    debug: true,
+    topologies: [
+      fly6pn: [
+        strategy: Cluster.Strategy.DNSPoll,
+        config: [
+          polling_interval: 5_000,
+          query: "#{app_name}.internal",
+          node_basename: app_name
+        ]
+      ]
+    ]
 end

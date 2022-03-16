@@ -7,6 +7,8 @@ defmodule Chat.Application do
 
   @impl true
   def start(_type, _args) do
+    topologies = Application.get_env(:libcluster, :topologies) || []
+
     children = [
       # Start the Ecto repository
       # Chat.Repo,
@@ -19,9 +21,10 @@ defmodule Chat.Application do
       # Start Presence
       ChatWeb.Presence,
       # Start the Endpoint (http/https)
-      ChatWeb.Endpoint
+      ChatWeb.Endpoint,
       # Start a worker by calling: Chat.Worker.start_link(arg)
       # {Chat.Worker, arg}
+      {Cluster.Supervisor, [topologies, [name: ChatWeb.ClusterSupervisor]]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -10,7 +10,8 @@ defmodule Chat.MixProject do
       compilers: [:gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: releases()
     ]
   end
 
@@ -27,6 +28,12 @@ defmodule Chat.MixProject do
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp releases do
+    [
+      chat: [cookie: "chat-cookie"]
+    ]
+  end
 
   # Specifies your project dependencies.
   #
@@ -54,7 +61,8 @@ defmodule Chat.MixProject do
       ## Additional
       {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
       {:uuid, "~> 1.1"},
-      {:phoenix_live_session, "~> 0.1.3"}
+      {:phoenix_live_session, "~> 0.1.3"},
+      {:libcluster, "~> 3.3.1"}
     ]
   end
 

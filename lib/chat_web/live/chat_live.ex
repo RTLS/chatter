@@ -140,11 +140,11 @@ defmodule ChatWeb.ChatLive do
 
         {:noreply,
          update_chat(socket, chat_id, fn chat ->
-            users_online =
-              chat.users_online
-              |> Kernel.++(joins_users)
-              |> Stream.reject(& &1.id in leaves_ids)
-              |> Enum.uniq()
+           users_online =
+             chat.users_online
+             |> Kernel.++(joins_users)
+             |> Stream.reject(&(&1.id in leaves_ids))
+             |> Enum.uniq()
 
            %{chat | users_online: users_online}
          end)}
