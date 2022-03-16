@@ -8,8 +8,8 @@ defmodule ChatWeb.ChatSidebar do
       <div><%= @chat.name %></div>
       <%= if message = List.first(@chat.messages) do %>
         <div class="flex justify-between pr-4 text-zinc-500 text-sm">
-          <div class="h-5 overflow-hidden text-ellipsis"><%= message.text %></div>
-          <div class=""><%= Chat.Utils.format_datetime(message.sent_at) %></div>
+          <div class="w-3/4 h-5 overflow-hidden"><%= message.text %></div>
+          <div class="w-1/4 h-5 text-right"><%= Chat.Utils.format_datetime(message.sent_at) %></div>
         </div>
       <% end %>
       <div class="text-right pr-4 text-sm"><%= users_online_text(@chat.users_online) %></div>

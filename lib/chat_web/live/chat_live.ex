@@ -54,10 +54,21 @@ defmodule ChatWeb.ChatLive do
   def connected_mount(socket) do
     selected_chat = List.last(@chats)
 
+    # Track ourself as in the selected channel
+    Presence.track(self(), chat_topic(selected_chat), @user.id, %{})
+
+    chats = Enum.map(@chats, fn chat ->
+      # Subscribe to updates on all chats
+      ChatWeb.Endpoint.subscribe(chat_topic(chat))
+
+      # Get current online count for all chats
+      %{chat | users_online: chat |> chat_topic() |> Presence.list() |> map_size()}
+    end)
+
     socket =
       socket
       |> assign(:user, @user)
-      |> assign(:chats, @chats)
+      |> assign(:chats, chats)
       |> assign(:selected_chat_id, selected_chat.id)
       |> assign(:status, :connected)
 
@@ -71,15 +82,20 @@ defmodule ChatWeb.ChatLive do
 
       chat_name ->
         chat = Chat.create(%{name: chat_name})
+        Presence.track(self(), chat_topic(chat.id), @user.id, %{})
         {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
     end
   end
 
   def handle_event("new-chat", _params, socket) do
+    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), @user.id)
     {:noreply, assign(socket, %{selected_chat_id: nil})}
   end
 
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
+    Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), @user.id)
+    Presence.track(self(), chat_topic(chat_id), @user.id, %{})
+
     {:noreply, assign(socket, %{selected_chat_id: chat_id})}
   end
 
@@ -102,10 +118,13 @@ defmodule ChatWeb.ChatLive do
   def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
     case topic_to_id(topic) do
       {:chat, id} ->
-        send_update(ChatSidebarComponent, id: id, payload: payload)
-    end
+        chat = Enum.find(socket.assigns.chats, & &1.id === id)
+        chat_idx = Enum.find_index(socket.assigns.chats, & &1.id === id)
 
-    {:noreply, socket}
+        chat = %{chat | users_online: chat.users_online + map_size(payload.joins) - map_size(payload.leaves)}
+        chats = List.replace_at(socket.assigns.chats, chat_idx, chat)
+        {:noreply, assign(socket, :chats, chats)}
+    end
   end
 
   def profile(assigns) do
@@ -191,6 +210,7 @@ defmodule ChatWeb.ChatLive do
   defp did_user_send_message?(%User{id: _}, %Message{user_id: _}), do: false
 
   def chat_topic(%Chat{id: id}), do: "chat:#{id}"
+  def chat_topic(id) when is_binary(id), do: "chat:#{id}"
 
   defp topic_to_id("chat:" <> id), do: {:chat, id}
 end
