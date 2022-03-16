@@ -101,7 +101,7 @@ defmodule ChatWeb.ChatLive do
     unsubscribe_from_messages(socket.assigns.selected_chat_id)
     subscribe_to_messages(chat_id)
 
-    {:noreply, assign(socket, %{selected_chat_id: chat_id, messages: Store.all_messages(%{chat_id: chat_id})})}
+    {:noreply, assign(socket, %{selected_chat_id: chat_id, clear_message: "", messages: Store.all_messages(%{chat_id: chat_id})})}
   end
 
   def handle_event("send-message", %{"message" => ""}, socket) do
