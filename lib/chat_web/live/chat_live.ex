@@ -40,6 +40,7 @@ defmodule ChatWeb.ChatLive do
       |> assign(:status, :connected)
       |> assign(:selected_chat_id, selected_chat_id)
       |> assign(:user, user)
+      |> assign(:messages, Store.all_messages(%{chat_id: selected_chat_id}))
 
     {:ok, socket}
   end
@@ -57,7 +58,7 @@ defmodule ChatWeb.ChatLive do
         Presence.track(self(), chat_topic(chat), socket.assigns.user.id, %{})
         ChatWeb.Endpoint.subscribe(chat_topic(chat))
 
-        {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats]})}
+        {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats], messages: []})}
     end
   end
 
@@ -78,7 +79,7 @@ defmodule ChatWeb.ChatLive do
     Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), socket.assigns.user.id)
     Presence.track(self(), chat_topic(chat_id), socket.assigns.user.id, %{})
 
-    {:noreply, assign(socket, %{selected_chat_id: chat_id})}
+    {:noreply, assign(socket, %{selected_chat_id: chat_id, messages: Store.all_messages(%{chat_id: chat_id})})}
   end
 
   def handle_event("send-message", %{"message" => ""}, socket) do
@@ -88,11 +89,10 @@ defmodule ChatWeb.ChatLive do
   def handle_event("send-message", %{"message" => message}, socket) do
     user = socket.assigns.user
 
-    {:noreply,
-     update_chat(socket, socket.assigns.selected_chat_id, fn chat ->
-       {:ok, new_message} = Store.create_message(%{user_id: user.id, user: user, text: message})
-       %{chat | messages: [new_message | chat.messages]}
-     end)}
+    {:ok, new_message} =
+      Store.create_message(%{chat_id: socket.assigns.selected_chat_id, user_id: user.id, user: user, text: message})
+
+    {:noreply, assign(socket, :messages, [new_message | socket.assigns.messages])}
   end
 
   def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
@@ -155,7 +155,7 @@ defmodule ChatWeb.ChatLive do
       <div class="flex-none py-3 px-4 h-20 w-full text-xl font-semibold border-b border-zinc-800"><%= @chat.name %></div>
       <div class="grow w-full overflow-auto">
         <div class="py-4 flex flex-col-reverse h-full overflow-auto">
-          <%= for message <- @chat.messages do %>
+          <%= for message <- @messages do %>
             <.message message={message} user={@user} />
           <% end %>
         </div>
@@ -195,7 +195,7 @@ defmodule ChatWeb.ChatLive do
   defp update_chat(socket, chat_id, chat_update_fn) do
     chat =
       socket.assigns.chats
-      |> Enum.find(& &1.id === chat_id)
+      |> Enum.find(&(&1.id === chat_id))
       |> chat_update_fn.()
 
     chat_idx = Enum.find_index(socket.assigns.chats, &(&1.id === chat_id))

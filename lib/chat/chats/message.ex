@@ -1,6 +1,6 @@
 defmodule Chat.Chats.Message do
-  @enforce_keys [:id, :text, :user_id, :sent_at]
-  defstruct [:id, :text, :user_id, :user, :sent_at]
+  @enforce_keys [:id, :chat_id, :user_id, :text, :sent_at]
+  defstruct [:id, :chat_id, :user_id, :user, :text, :sent_at]
 
   alias __MODULE__
 
