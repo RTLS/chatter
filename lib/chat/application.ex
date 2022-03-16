@@ -10,6 +10,8 @@ defmodule Chat.Application do
     children = [
       # Start the Ecto repository
       Chat.Repo,
+      # Start the agent store
+      Chat.Store,
       # Start the Telemetry supervisor
       ChatWeb.Telemetry,
       # Start the PubSub system
