@@ -4,7 +4,7 @@ defmodule ChatWeb.ChatLive do
 
   alias Chat.Store
   alias Chat.Users.User
-  alias Chat.Chats.{Chat, Message}
+  alias Chat.Chats
   alias ChatWeb.{Avatar, ChatSidebar, Presence}
 
   def mount(_params, _session, socket) do
@@ -28,11 +28,15 @@ defmodule ChatWeb.ChatLive do
 
     selected_chat_id =
       case chats do
-        [] -> nil
-        chats -> List.first(chats).id
-      end
+        [] ->
+          nil
 
-    if selected_chat_id, do: Presence.track(self(), chat_topic(selected_chat_id), user.id, %{})
+        chats ->
+          chat_id = List.first(chats).id
+          Presence.track(self(), chat_topic(chat_id), user.id, %{})
+          subscribe_to_messages(chat_id)
+          chat_id
+      end
 
     socket =
       socket
@@ -58,6 +62,9 @@ defmodule ChatWeb.ChatLive do
         Presence.track(self(), chat_topic(chat), socket.assigns.user.id, %{})
         ChatWeb.Endpoint.subscribe(chat_topic(chat))
 
+        # Subscribe to messages
+        subscribe_to_messages(chat.id)
+
         {:noreply, assign(socket, %{selected_chat_id: chat.id, chats: [chat | socket.assigns.chats], messages: []})}
     end
   end
@@ -68,6 +75,8 @@ defmodule ChatWeb.ChatLive do
 
   def handle_event("new-chat", _params, socket) do
     Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), socket.assigns.user.id)
+    unsubscribe_from_messages(socket.assigns.selected_chat_id)
+
     {:noreply, assign(socket, %{selected_chat_id: nil})}
   end
 
@@ -78,6 +87,9 @@ defmodule ChatWeb.ChatLive do
   def handle_event("click-chat", %{"chat-id" => chat_id}, socket) do
     Presence.untrack(self(), chat_topic(socket.assigns.selected_chat_id), socket.assigns.user.id)
     Presence.track(self(), chat_topic(chat_id), socket.assigns.user.id, %{})
+
+    unsubscribe_from_messages(socket.assigns.selected_chat_id)
+    subscribe_to_messages(chat_id)
 
     {:noreply, assign(socket, %{selected_chat_id: chat_id, messages: Store.all_messages(%{chat_id: chat_id})})}
   end
@@ -92,7 +104,9 @@ defmodule ChatWeb.ChatLive do
     {:ok, new_message} =
       Store.create_message(%{chat_id: socket.assigns.selected_chat_id, user_id: user.id, user: user, text: message})
 
-    {:noreply, assign(socket, :messages, [new_message | socket.assigns.messages])}
+    broadcast_message(new_message)
+
+    {:noreply, socket}
   end
 
   def handle_info(%{event: "presence_diff", topic: topic, payload: payload}, socket) do
@@ -103,6 +117,10 @@ defmodule ChatWeb.ChatLive do
            %{chat | users_online: chat.users_online + map_size(payload.joins) - map_size(payload.leaves)}
          end)}
     end
+  end
+
+  def handle_info({:new_message, %Chats.Message{chat_id: chat_id} = message}, %{assigns: %{selected_chat_id: chat_id}} = socket) do
+    {:noreply, update(socket, :messages, &[message | &1])}
   end
 
   def profile(assigns) do
@@ -184,10 +202,10 @@ defmodule ChatWeb.ChatLive do
     """
   end
 
-  defp did_user_send_message?(%User{id: id}, %Message{user_id: id}), do: true
-  defp did_user_send_message?(%User{id: _}, %Message{user_id: _}), do: false
+  defp did_user_send_message?(%User{id: id}, %Chats.Message{user_id: id}), do: true
+  defp did_user_send_message?(%User{id: _}, %Chats.Message{user_id: _}), do: false
 
-  def chat_topic(%Chat{id: id}), do: "chat:#{id}"
+  def chat_topic(%Chats.Chat{id: id}), do: "chat:#{id}"
   def chat_topic(id) when is_binary(id), do: "chat:#{id}"
 
   defp topic_to_id("chat:" <> id), do: {:chat, id}
@@ -201,4 +219,16 @@ defmodule ChatWeb.ChatLive do
     chat_idx = Enum.find_index(socket.assigns.chats, &(&1.id === chat_id))
     assign(socket, :chats, List.replace_at(socket.assigns.chats, chat_idx, chat))
   end
+
+  def subscribe_to_messages(%Chats.Chat{id: id}), do: subscribe_to_messages(id)
+  def subscribe_to_messages(chat_id) when is_binary(chat_id), do: Phoenix.PubSub.subscribe(Chat.PubSub, message_topic(chat_id))
+
+  def unsubscribe_from_messages(%Chats.Chat{id: id}), do: unsubscribe_from_messages(id)
+  def unsubscribe_from_messages(chat_id) when is_binary(chat_id), do: Phoenix.PubSub.unsubscribe(Chat.PubSub, message_topic(chat_id))
+
+  def broadcast_message(%Chats.Message{chat_id: chat_id} = message) do
+    Phoenix.PubSub.broadcast(Chat.PubSub, message_topic(chat_id), {:new_message, message})
+  end
+
+  defp message_topic(chat_id), do: "messages:#{chat_id}"
 end
